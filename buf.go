@@ -93,7 +93,7 @@ type Interface interface {
 
 // -------- POOL -------
 
-var pool = sync.Pool{
+var Pool = sync.Pool{
     New: func() interface{} {
         return make([]byte, bufferLen)
     },
@@ -102,8 +102,8 @@ var pool = sync.Pool{
 // -------- COPY --------
 
 func Copy(w io.Writer, r io.Reader) (t int, err error) {
-	b := pool.Get().([]byte)
-	defer pool.Put(b)
+	b := Pool.Get().([]byte)
+	defer Pool.Put(b)
 	var m, n int
 	for {
 		m, err = r.Read(b[n:])
@@ -135,8 +135,8 @@ func CopyFile(w io.Writer, filename string) (t int, err error) {
 		return
 	}
 	defer r.Close()
-	b := pool.Get().([]byte)
-	defer pool.Put(b)
+	b := Pool.Get().([]byte)
+	defer Pool.Put(b)
 	var m, n int
 	for {
 		m, err = r.Read(b[n:])
@@ -175,23 +175,23 @@ func NewWriter(f io.Writer) *Writer {
 	if nf, ok := f.(*Writer); ok { // If it's already a Writer then don't create a new writer around it
 		return nf
 	} else {
-		return &Writer{w: f, data: pool.Get().([]byte)}
+		return &Writer{w: f, data: Pool.Get().([]byte)}
 	}
 }
 
 // Creates a new buffered writer wrapping an io.Writer which attempts to close the underlying writer when the custom.Writer is closed
 func NewWriterCloser(f io.Writer) *Writer {
-	return &Writer{w: f, data: pool.Get().([]byte), close: true}
+	return &Writer{w: f, data: Pool.Get().([]byte), close: true}
 }
 
 // Creates a new buffered Brotli writer wrapping an io.Writer
 func NewBrotliWriter(f io.Writer) *Writer {
-	return &Writer{w: brotli.NewWriter(f), data: pool.Get().([]byte), close: true}
+	return &Writer{w: brotli.NewWriter(f), data: Pool.Get().([]byte), close: true}
 }
 
 // Creates a new buffered Gzip writer wrapping an io.Writer
 func NewGzipWriter(f io.Writer) *Writer {
-	return &Writer{w: gzip.NewWriter(f), data: pool.Get().([]byte), close: true}
+	return &Writer{w: gzip.NewWriter(f), data: Pool.Get().([]byte), close: true}
 }
 
 // Creates a new buffered Zstd writer wrapping an io.Writer
@@ -200,12 +200,12 @@ func NewZstdWriter(f io.Writer) *Writer {
 	if err != nil {
 		panic(err)
 	}
-	return &Writer{w: zw, data: pool.Get().([]byte), close: true}
+	return &Writer{w: zw, data: Pool.Get().([]byte), close: true}
 }
 
 // Creates a new buffered LZ4 writer wrapping an io.Writer
 func NewLZ4Writer(f io.Writer) *Writer {
-	return &Writer{w: lz4.NewWriter(f), data: pool.Get().([]byte), close: true}
+	return &Writer{w: lz4.NewWriter(f), data: Pool.Get().([]byte), close: true}
 }
 
 // Write a slice of bytes to the buffer. Implements io.Writer interface
@@ -785,7 +785,7 @@ func (w *Writer) Close() (err error) {
 		w.cursor = 0
 	}
 	if len(w.data) == bufferLen {
-		pool.Put(w.data)
+		Pool.Put(w.data)
 		w.data = nil
 	}
 	if w.close {
@@ -840,7 +840,7 @@ type Buffer struct {
 // Creates a new buffer
 func NewBuffer(l int) *Buffer {
 	if l <= bufferLen {
-		return &Buffer{data: pool.Get().([]byte), length: bufferLen}
+		return &Buffer{data: Pool.Get().([]byte), length: bufferLen}
 	} else {
 		return &Buffer{data: make([]byte, l), length: l}
 	}
@@ -877,7 +877,7 @@ func (w *Buffer) grow(l int) {
 	newAr := make([]byte, newLength)
 	copy(newAr, w.data)
 	if w.length == bufferLen {
-		pool.Put(w.data)
+		Pool.Put(w.data)
 	}
 	w.length = newLength
 	w.data = newAr
@@ -1366,10 +1366,10 @@ func (w *Buffer) String() string {
 	return string(w.data[0:w.cursor])
 }
 
-// Releases the buffer back to the pool
+// Releases the buffer back to the Pool
 func (w *Buffer) Close() error {
 	if w.length == bufferLen {
-		pool.Put(w.data)
+		Pool.Put(w.data)
 		w.length = 0
 		w.data = nil
 	}
@@ -1402,12 +1402,12 @@ type Reader struct {
 
 // Creates a new buffered reader wrapping an io.Reader
 func NewReader(f io.Reader) *Reader {
-	return &Reader{f: f, buf: pool.Get().([]byte)}
+	return &Reader{f: f, buf: Pool.Get().([]byte)}
 }
 
 // Creates a new buffered Brotli reader wrapping an io.Reader
 func NewBrotliReader(f io.Reader) *Reader {
-	return &Reader{f: brotli.NewReader(f), buf: pool.Get().([]byte), close: true}
+	return &Reader{f: brotli.NewReader(f), buf: Pool.Get().([]byte), close: true}
 }
 
 // Creates a new buffered Gzip reader wrapping an io.Reader
@@ -1416,7 +1416,7 @@ func NewGzipReader(f io.Reader) *Reader {
 	if err != nil {
 		panic(err)
 	}
-	return &Reader{f: g, buf: pool.Get().([]byte), close: true}
+	return &Reader{f: g, buf: Pool.Get().([]byte), close: true}
 }
 
 // Creates a new buffered Zstd reader wrapping an io.Reader
@@ -1425,12 +1425,12 @@ func NewZstdReader(f io.Reader) *Reader {
 	if err != nil {
 		panic(err)
 	}
-	return &Reader{f: zr, buf: pool.Get().([]byte), close: true}
+	return &Reader{f: zr, buf: Pool.Get().([]byte), close: true}
 }
 
 // Creates a new buffered LZ4 reader wrapping an io.Reader
 func NewLZ4Reader(f io.Reader) *Reader {
-	return &Reader{f: lz4.NewReader(f), buf: pool.Get().([]byte), close: true}
+	return &Reader{f: lz4.NewReader(f), buf: Pool.Get().([]byte), close: true}
 }
 
 func (r *Reader) fill(x int) error {
@@ -1902,9 +1902,9 @@ func (r *Reader) EOF() error {
 	return err
 }
 
-// Releases the buffer back to the pool
+// Releases the buffer back to the Pool
 func (r *Reader) Close() error {
-	pool.Put(r.buf)
+	Pool.Put(r.buf)
 	r.buf = nil
 	if r.close {
 		if sw, ok := r.f.(io.Closer); ok { // Attempt to close underlying reader if it has a Close() method
