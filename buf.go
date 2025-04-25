@@ -12,7 +12,7 @@ import (
  "github.com/andybalholm/brotli"
  "github.com/klauspost/compress/gzip"
  "github.com/klauspost/compress/zstd"
- "github.com/pierrec/lz4"
+ "github.com/pierrec/lz4/v4"
 )
 
 const (
